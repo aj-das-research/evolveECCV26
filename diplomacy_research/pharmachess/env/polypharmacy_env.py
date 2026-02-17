@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ..data.faers_client import FAERSClient
 from ..data.drugbank_loader import DrugBankLoader
 from ..data.pubmed_client import PubMedClient
-from ..graph.cyp_graph import CYPGraph, build_graph_for_regimen
+from ..graph.cyp_graph import CYPGraph
 from ..memory.polypharmacy_memory import PolypharmacyMemory
 
 
@@ -154,6 +154,9 @@ class PolypharmacyEnv:
 
         state = PolypharmacyState(drugs_in_regimen=list(self.initial_drugs))
         state = await self._populate_state(state)
+        # Seed _prev_risk from the actual initial risk so the first step's
+        # reward correctly measures improvement relative to the starting state.
+        self._prev_risk = state.overall_risk_score
         self._state = state
         return state
 

@@ -40,7 +40,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # ── ensure the project root is in sys.path ──────────────────────────────────
-_PROJECT_ROOT = Path(__file__).resolve().parents[4]
+# File is at: pharmachess/tests/run_pharmachess.py
+# parents[0]=tests, [1]=pharmachess, [2]=diplomacy_research, [3]=project root
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from langchain_openai import ChatOpenAI

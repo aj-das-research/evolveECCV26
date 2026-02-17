@@ -246,13 +246,29 @@ class OpenAIDrugAgent(BaseDrugAgent):
         return text
 
     @staticmethod
-    def _format_cyp_table(cyp_occupancy: Dict[str, List[str]]) -> str:
+    def _format_cyp_table(cyp_occupancy: Dict[str, Any]) -> str:
+        """Format CYP occupancy dict for LLM prompt.
+
+        Handles the nested structure from DrugBankLoader.build_cyp_occupancy():
+          {node_alias: {"substrates": [...], "inhibitors": [...], "inducers": [...]}}
+        """
         if not cyp_occupancy:
             return "  (no occupancy data available)"
         lines = []
-        for enzyme, drugs in sorted(cyp_occupancy.items()):
-            lines.append(f"  {enzyme}: {', '.join(drugs) if drugs else 'uncontested'}")
-        return "\n".join(lines)
+        for node, roles in sorted(cyp_occupancy.items()):
+            if isinstance(roles, dict):
+                # Nested structure from DrugBankLoader
+                parts = []
+                for role in ("substrates", "inhibitors", "inducers"):
+                    drug_list = roles.get(role, [])
+                    if drug_list:
+                        parts.append(f"{role}: {', '.join(drug_list)}")
+                if parts:
+                    lines.append(f"  {node} | " + " | ".join(parts))
+            else:
+                # Flat list fallback
+                lines.append(f"  {node}: {', '.join(roles) if roles else 'uncontested'}")
+        return "\n".join(lines) if lines else "  (no occupied nodes)"
 
     @staticmethod
     def _format_interactions(pairs: List[Dict]) -> str:
@@ -271,12 +287,15 @@ class OpenAIDrugAgent(BaseDrugAgent):
             return "  (no similar cases in memory bank yet — this may be a novel combination)"
         lines = []
         for i, p in enumerate(precedents[:5], 1):
-            outcome = p.get("outcome", "unknown")
+            # MemoryEntry field is "outcome_label", not "outcome"
+            outcome = p.get("outcome_label", p.get("outcome", "unknown"))
             regimen = ", ".join(p.get("regimen", []))
             score = p.get("similarity_score", 0.0)
+            explanation = p.get("explanation", "")[:120]
             lines.append(
                 f"  [{i}] Regimen: {regimen}\n"
-                f"      Outcome: {outcome} | Memory similarity: {score:.2f}"
+                f"      Outcome: {outcome} | Memory similarity: {score:.2f}\n"
+                f"      Lesson: {explanation}"
             )
         return "\n".join(lines)
 
